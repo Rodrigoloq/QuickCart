@@ -8,16 +8,13 @@ import com.rodrigoloq.quickcart.room.entities.CartProducts
 import com.rodrigoloq.quickcart.room.entities.Favorites
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 
-class FavoritesRepository {
-    private val favoritesDao: FavoritesDao by lazy {
-        QuickCartApp.ldb.FavoritesDao()
-    }
-
-    private val cartProductsDao: CartProductsDao by lazy {
-        QuickCartApp.ldb.cartProductsDao()
-    }
+class FavoritesRepository @Inject constructor(
+    private val cartProductsDao: CartProductsDao,
+    private val favoritesDao: FavoritesDao
+) {
 
     suspend fun getAllFavorites(onResult:(List<Favorites>?) -> Unit) =
         withContext(Dispatchers.IO){

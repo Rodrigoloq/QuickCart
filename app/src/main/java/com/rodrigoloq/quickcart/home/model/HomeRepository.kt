@@ -9,14 +9,13 @@ import com.rodrigoloq.quickcart.room.CartProductsDao
 import com.rodrigoloq.quickcart.room.entities.CartProducts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class HomeRepository {
-    private val productService: ProductService by lazy {
-        QuickCartApp.rdb.create(ProductService::class.java) }
+class HomeRepository @Inject constructor(
+    private val productService: ProductService,
+    private val cartProductsDao: CartProductsDao
+) {
 
-    private val cartProductsDao: CartProductsDao by lazy {
-        QuickCartApp.ldb.cartProductsDao()
-    }
 
     suspend fun getProductsByCategory(categoryName: String,
                                       onResult:(List<Product>?) -> Unit) =

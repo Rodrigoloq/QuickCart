@@ -1,5 +1,6 @@
 package com.rodrigoloq.quickcart.favorites
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +35,7 @@ import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -58,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -65,6 +68,7 @@ import coil3.compose.AsyncImage
 import com.rodrigoloq.quickcart.R
 import com.rodrigoloq.quickcart.common.CustomSnackBar
 import com.rodrigoloq.quickcart.common.NotFound
+import com.rodrigoloq.quickcart.favorites.viewmodel.FavoritesUIState
 import com.rodrigoloq.quickcart.favorites.viewmodel.FavoritesViewModel
 import com.rodrigoloq.quickcart.retrofit.entities.product.Product
 import com.rodrigoloq.quickcart.room.entities.CartProducts
@@ -76,40 +80,66 @@ import com.rodrigoloq.quickcart.ui.theme.QuickCartTheme
 import com.rodrigoloq.quickcart.ui.theme.myFont
 import kotlinx.coroutines.launch
 
-@Preview()
+@Preview(name = "Dark Mode",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true)
 @Composable
-fun FavoritesPreview(){
+fun FavoritesPreview() {
     QuickCartTheme() {
-        FavoritesView(rememberNavController())
+        Surface() {
+            FavoritesViewContent(
+                state = FavoritesUIState(),
+                modifier = Modifier,
+                navController = rememberNavController(),
+                removeFavorite = {},
+                clearFavorites = {}
+            ) {}
+        }
     }
 }
 
 @Composable
-fun FavoritesView(navController: NavController,
-                  modifier: Modifier = Modifier,
-                  viewModel: FavoritesViewModel = viewModel()){
+fun FavoritesViewContent(
+    state: FavoritesUIState,
+    modifier: Modifier,
+    navController: NavController,
+    removeFavorite: (Int) -> Unit,
+    clearFavorites: () -> Unit,
+    addProductToCart: (CartProducts) -> Unit
+) {
+
     var expanded by remember { mutableStateOf(false) }
     val snackState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier.fillMaxSize().background(BackgroundPrimary)) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(BackgroundPrimary)
+    ) {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxWidth()
-                .padding(top = 8.dp, start = 8.dp, end = 8.dp),
-                contentAlignment = Alignment.TopCenter) {
-                Text("My favorites",
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Text(
+                    "My favorites",
                     fontFamily = myFont,
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp,
                     color = Color.Black,
-                    modifier = Modifier.padding(top = 8.dp))
+                    modifier = Modifier.padding(top = 8.dp)
+                )
                 Box(Modifier.align(Alignment.TopEnd)) {
-                    IconButton(onClick = {
-                        expanded = !expanded
-                    }, Modifier
-                        .border(2.dp, BackgroundSecondary, CircleShape)
-                        .clip(CircleShape)) {
+                    IconButton(
+                        onClick = {
+                            expanded = !expanded
+                        }, Modifier
+                            .border(2.dp, BackgroundSecondary, CircleShape)
+                            .clip(CircleShape)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.MoreHoriz,
                             contentDescription = "More options",
@@ -122,16 +152,22 @@ fun FavoritesView(navController: NavController,
                         containerColor = Color.White
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Clear favorites",
-                                color = Color.Black) },
+                            text = {
+                                Text(
+                                    "Clear favorites",
+                                    color = Color.Black
+                                )
+                            },
                             onClick = {
-                                viewModel.clearFavorites()
+                                clearFavorites()
                                 expanded = false
                                 coroutineScope.launch {
-                                    snackState.showSnackbar("Your favorites have been cleared",
+                                    snackState.showSnackbar(
+                                        "Your favorites have been cleared",
                                         actionLabel = "Close",
                                         withDismissAction = true,
-                                        duration = SnackbarDuration.Short)
+                                        duration = SnackbarDuration.Short
+                                    )
                                 }
                             }
                         )
@@ -140,44 +176,57 @@ fun FavoritesView(navController: NavController,
             }
             Spacer(Modifier.padding(4.dp))
             HorizontalDivider(color = Color.LightGray)
-            if (uiState.favorites.isEmpty()){
-                NotFound(title = "No favorites yet. Start exploring to add some",
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp))
+            if (state.favorites.isEmpty()) {
+                NotFound(
+                    title = "No favorites yet. Start exploring to add some",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp)
+                )
             } else {
-                LazyColumn(Modifier.padding(horizontal = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(count = uiState.favorites.size){i ->
-                        val favorite = uiState.favorites[i]
-                        FavoriteItem(favorite,
+                LazyColumn(
+                    Modifier.padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(count = state.favorites.size) { i ->
+                        val favorite = state.favorites[i]
+                        FavoriteItem(
+                            favorite,
                             onRemove = {
-                                viewModel.removeFavorite(favorite.product_id)
+                                removeFavorite(favorite.product_id)
                                 coroutineScope.launch {
-                                    snackState.showSnackbar("The product has been removed",
+                                    snackState.showSnackbar(
+                                        "The product has been removed",
                                         actionLabel = "Close",
                                         withDismissAction = true,
-                                        duration = SnackbarDuration.Short)
+                                        duration = SnackbarDuration.Short
+                                    )
                                 }
                             },
                             onShowProduct = {
                                 navController.navigate("product" + "/${favorite.product_id}")
                             },
                             onAddToCart = {
-                                viewModel.addProductToCart(CartProducts(
-                                    product_id = favorite.product_id,
-                                    title = favorite.title,
-                                    price = favorite.price,
-                                    discount_percentage = favorite.discount_percentage,
-                                    price_with_discount = favorite.price_with_discount,
-                                    thumbnail = favorite.thumbnail,
-                                    stock = favorite.stock,
-                                    quantity = 1,
-                                    sku = favorite.sku
-                                ))
+                                addProductToCart(
+                                    CartProducts(
+                                        product_id = favorite.product_id,
+                                        title = favorite.title,
+                                        price = favorite.price,
+                                        discount_percentage = favorite.discount_percentage,
+                                        price_with_discount = favorite.price_with_discount,
+                                        thumbnail = favorite.thumbnail,
+                                        stock = favorite.stock,
+                                        quantity = 1,
+                                        sku = favorite.sku
+                                    )
+                                )
                                 coroutineScope.launch {
-                                    snackState.showSnackbar("Product added to cart",
+                                    snackState.showSnackbar(
+                                        "Product added to cart",
                                         actionLabel = "Close",
                                         withDismissAction = true,
-                                        duration = SnackbarDuration.Short)
+                                        duration = SnackbarDuration.Short
+                                    )
                                 }
                             })
                     }
@@ -185,12 +234,12 @@ fun FavoritesView(navController: NavController,
             }
         }
         SnackbarHost(
-            modifier=Modifier.align(Alignment.BottomStart),
+            modifier = Modifier.align(Alignment.BottomStart),
             hostState = snackState
         ) { snackbarData: SnackbarData ->
             CustomSnackBar(
                 snackbarData.visuals.message,
-            ){
+            ) {
                 snackbarData.dismiss()
             }
         }
@@ -198,59 +247,108 @@ fun FavoritesView(navController: NavController,
 }
 
 @Composable
-fun FavoriteItem(favorite: Favorites,
-                 onRemove:() -> Unit,
-                 onShowProduct:() -> Unit,
-                 onAddToCart:() -> Unit){
-    Box(Modifier.fillMaxWidth().background(BackgroundPrimary)) {
+fun FavoritesView(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: FavoritesViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    FavoritesViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        removeFavorite = { productId ->
+            viewModel.removeFavorite(productId)
+        },
+        clearFavorites = {
+            viewModel.clearFavorites()
+        },
+        addProductToCart = { product ->
+            viewModel.addProductToCart(product)
+        }
+    )
+}
+
+@Composable
+fun FavoriteItem(
+    favorite: Favorites,
+    onRemove: () -> Unit,
+    onShowProduct: () -> Unit,
+    onAddToCart: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(BackgroundPrimary)
+    ) {
         Row() {
             Box(Modifier.background(BackgroundSecondary)) {
-                AsyncImage(model = favorite.thumbnail,
+                AsyncImage(
+                    model = favorite.thumbnail,
                     contentDescription = "product thumbnail",
                     error = painterResource(R.drawable.ic_broken_image),
                     placeholder = painterResource(R.drawable.ic_downloading),
                     fallback = painterResource(R.drawable.ic_broken_image),
-                    modifier = Modifier.size(150.dp))
+                    modifier = Modifier.size(150.dp)
+                )
             }
-            Column(Modifier.height(150.dp).padding(start = 8.dp),
-                verticalArrangement = Arrangement.SpaceBetween) {
+            Column(
+                Modifier
+                    .height(150.dp)
+                    .padding(start = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
                 Column() {
-                    Text(favorite.title,
+                    Text(
+                        favorite.title,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontFamily = myFont,
                         color = Color.Black,
-                        fontWeight = FontWeight.Bold)
+                        fontWeight = FontWeight.Bold
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${favorite.stock} left",
+                        Text(
+                            "${favorite.stock} left",
                             fontFamily = myFont,
-                            color = Color.DarkGray)
-                        Text(" | ",
+                            color = Color.DarkGray
+                        )
+                        Text(
+                            " | ",
                             fontFamily = myFont,
-                            color = Color.Gray)
+                            color = Color.Gray
+                        )
                         RatingStars(favorite.rating.toFloat(), starSize = 18.dp)
-                        Text("(${favorite.reviewsNumber})",
+                        Text(
+                            "(${favorite.reviewsNumber})",
                             fontFamily = myFont,
-                            color = Color.Black)
+                            color = Color.Black
+                        )
                     }
                 }
                 Column() {
                     Row() {
-                        Text("$${favorite.price_with_discount}",
+                        Text(
+                            "$${favorite.price_with_discount}",
                             fontFamily = myFont,
                             fontWeight = FontWeight.SemiBold,
                             color = GreenMain,
-                            fontSize = 18.sp)
-                        Text("${favorite.price}",
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            "${favorite.price}",
                             textDecoration = TextDecoration.LineThrough,
                             fontFamily = myFont,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.Black,
-                            modifier = Modifier.padding(start = 4.dp))
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Button(modifier = Modifier
-                            .weight(1f),
+                        Button(
+                            modifier = Modifier
+                                .weight(1f),
                             colors = ButtonColors(
                                 containerColor = GreenMain,
                                 contentColor = BackgroundPrimary,
@@ -261,16 +359,21 @@ fun FavoriteItem(favorite: Favorites,
                                 onAddToCart()
                             }) {
                             Box(Modifier.padding(vertical = 4.dp)) {
-                                Text("Add to cart", fontSize = 18.sp,
+                                Text(
+                                    "Add to cart", fontSize = 18.sp,
                                     fontFamily = myFont,
-                                    fontWeight = FontWeight.SemiBold)
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
-                        MinimalDropdownMenu(onRemove = {onRemove()},
-                            onShowProduct = {onShowProduct()})
+                        MinimalDropdownMenu(
+                            onRemove = { onRemove() },
+                            onShowProduct = { onShowProduct() })
                     }
-                    HorizontalDivider(Modifier.padding(top = 8.dp),
-                        1.dp, Color.LightGray)
+                    HorizontalDivider(
+                        Modifier.padding(top = 8.dp),
+                        1.dp, Color.LightGray
+                    )
                 }
             }
         }
@@ -330,15 +433,19 @@ fun RatingStars(
 }
 
 @Composable
-fun MinimalDropdownMenu(onRemove:() -> Unit,
-                        onShowProduct:() -> Unit) {
+fun MinimalDropdownMenu(
+    onRemove: () -> Unit,
+    onShowProduct: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     Box() {
         IconButton(onClick = { expanded = !expanded }) {
-            Icon(Icons.Default.MoreHoriz,
+            Icon(
+                Icons.Default.MoreHoriz,
                 contentDescription = "More options",
                 tint = Color.Black,
-                modifier = Modifier.padding(start = 12.dp, end = 4.dp))
+                modifier = Modifier.padding(start = 12.dp, end = 4.dp)
+            )
         }
         DropdownMenu(
             expanded = expanded,
@@ -346,16 +453,28 @@ fun MinimalDropdownMenu(onRemove:() -> Unit,
             containerColor = Color.White
         ) {
             DropdownMenuItem(
-                text = { Text("Remove",
-                    color = Color.Black) },
-                onClick = { expanded = false
-                    onRemove() }
+                text = {
+                    Text(
+                        "Remove",
+                        color = Color.Black
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onRemove()
+                }
             )
             DropdownMenuItem(
-                text = { Text("Show product",
-                    color = Color.Black) },
-                onClick = { expanded = false
-                    onShowProduct() }
+                text = {
+                    Text(
+                        "Show product",
+                        color = Color.Black
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onShowProduct()
+                }
             )
         }
     }

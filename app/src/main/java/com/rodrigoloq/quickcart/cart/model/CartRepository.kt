@@ -6,11 +6,11 @@ import com.rodrigoloq.quickcart.room.CartProductsDao
 import com.rodrigoloq.quickcart.room.entities.CartProducts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class CartRepository {
-    private val cartProductsDao: CartProductsDao by lazy {
-        QuickCartApp.ldb.cartProductsDao()
-    }
+class CartRepository @Inject constructor(
+    private val cartProductsDao: CartProductsDao
+) {
 
     suspend fun getAllProductsFromCart(onResult:(List<CartProducts>?) -> Unit) =
         withContext(Dispatchers.IO){

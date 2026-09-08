@@ -45,7 +45,7 @@ import com.rodrigoloq.quickcart.ui.theme.myFont
 fun EditInformationFormPreview(){
     QuickCartTheme() {
         EditInformationFormView(optionName = "Name",
-            userInformation = UserResponse()){
+            userInformation = UserResponse(), onSave = {}){
 
         }
     }
@@ -55,6 +55,7 @@ fun EditInformationFormPreview(){
 fun EditInformationFormView(modifier: Modifier = Modifier,
                             optionName: String,
                             userInformation: UserResponse,
+                            onSave:() -> Unit,
                             onDismiss:(Boolean) -> Unit){
 
     var informationValue = ""
@@ -150,7 +151,7 @@ fun EditInformationFormView(modifier: Modifier = Modifier,
                 ), shape = RoundedCornerShape(12.dp),
                 onClick = {
                     focus.clearFocus()
-                    onDismiss(false)
+                    onSave()
                 }) {
                 Box(Modifier.padding(vertical = 8.dp)) {
                     Text("Save", fontSize = 24.sp,

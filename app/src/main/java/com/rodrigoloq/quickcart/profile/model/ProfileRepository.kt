@@ -6,12 +6,11 @@ import com.rodrigoloq.quickcart.retrofit.UserService
 import com.rodrigoloq.quickcart.retrofit.entities.user.UserResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class ProfileRepository {
-    private val userService: UserService by lazy {
-        QuickCartApp.rdb.create(UserService::class.java)
-    }
-
+class ProfileRepository @Inject constructor(
+    private val userService: UserService
+){
     suspend fun getUserById(userId: String,
                             onResult:(UserResponse?) -> Unit) =
         withContext(Dispatchers.IO){

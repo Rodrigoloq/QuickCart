@@ -7,14 +7,18 @@ import com.rodrigoloq.quickcart.product.model.ProductRepository
 import com.rodrigoloq.quickcart.product.viewmodel.ProductUIState
 import com.rodrigoloq.quickcart.room.entities.CartProducts
 import com.rodrigoloq.quickcart.room.entities.Favorites
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ProductViewModel : ViewModel() {
-    private val repository = ProductRepository()
+@HiltViewModel
+class ProductViewModel @Inject constructor(
+    private val repository: ProductRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductUIState())
 

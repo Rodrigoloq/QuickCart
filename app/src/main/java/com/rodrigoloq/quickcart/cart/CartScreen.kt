@@ -52,27 +52,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.UiMode
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.rodrigoloq.quickcart.R
+import com.rodrigoloq.quickcart.cart.viewmodel.CartUIState
 import com.rodrigoloq.quickcart.cart.viewmodel.CartViewModel
 import com.rodrigoloq.quickcart.common.CustomSnackBar
 import com.rodrigoloq.quickcart.common.NotFound
-import com.rodrigoloq.quickcart.favorites.MinimalDropdownMenu
-import com.rodrigoloq.quickcart.favorites.RatingStars
 import com.rodrigoloq.quickcart.room.entities.CartProducts
 import com.rodrigoloq.quickcart.ui.theme.BackgroundPrimary
 import com.rodrigoloq.quickcart.ui.theme.BackgroundSecondary
@@ -81,45 +76,56 @@ import com.rodrigoloq.quickcart.ui.theme.QuickCartTheme
 import com.rodrigoloq.quickcart.ui.theme.myFont
 import kotlinx.coroutines.launch
 
-@Preview(name = "Dark Mode",
+@Preview(
+    name = "Dark Mode",
     uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true)
+    showBackground = true
+)
 @Composable
-fun CartPreview(){
+fun CartPreview() {
     QuickCartTheme() {
-        Surface(){
-            CartView(rememberNavController())
+        Surface() {
+            CartViewContent(
+                state = CartUIState(),
+                modifier = Modifier,
+                removeProductFromCart = { },
+                modifyQuantity = { id, isSum -> }
+            ) { }
         }
     }
 }
 
 @Composable
-fun CartView(navController: NavController,
-             modifier: Modifier = Modifier,
-             viewModel: CartViewModel = viewModel()){
-
-    val uiState by viewModel.uiState.collectAsState()
+fun CartViewContent(
+    state: CartUIState,
+    modifier: Modifier,
+    removeProductFromCart: (Int) -> Unit,
+    modifyQuantity: (Int, Boolean) -> Unit,
+    clearCart: () -> Unit
+) {
     val snackState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
 
-    fun sumProductsPrices(priceType: String): String{
+    fun sumProductsPrices(priceType: String): String {
         var sum = 0.0
-        when(priceType){
+        when (priceType) {
             "subtotal" -> {
-                uiState.cartProducts.forEach { product ->
+                state.cartProducts.forEach { product ->
                     val total = product.price * product.quantity
                     sum += total
                 }
             }
+
             "discount" -> {
-                uiState.cartProducts.forEach { product ->
+                state.cartProducts.forEach { product ->
                     val total = (product.price - product.price_with_discount) * product.quantity
                     sum += total
                 }
             }
+
             "total" -> {
-                uiState.cartProducts.forEach { product ->
+                state.cartProducts.forEach { product ->
                     val total = product.price_with_discount * product.quantity
                     sum += total
                 }
@@ -128,23 +134,34 @@ fun CartView(navController: NavController,
         return String.format("%.2f", sum)
     }
 
-    Box(modifier.fillMaxSize().background(BackgroundPrimary)) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(BackgroundPrimary)
+    ) {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxWidth()
-                .padding(top = 8.dp, start = 8.dp, end = 8.dp),
-                contentAlignment = Alignment.TopCenter) {
-                Text("My cart",
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Text(
+                    "My cart",
                     fontFamily = myFont,
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp,
                     color = Color.Black,
-                    modifier = Modifier.padding(top = 8.dp))
+                    modifier = Modifier.padding(top = 8.dp)
+                )
                 Box(Modifier.align(Alignment.TopEnd)) {
-                    IconButton(onClick = {
-                        expanded = !expanded
-                    }, Modifier
-                        .border(2.dp, BackgroundSecondary, CircleShape)
-                        .clip(CircleShape)) {
+                    IconButton(
+                        onClick = {
+                            expanded = !expanded
+                        }, Modifier
+                            .border(2.dp, BackgroundSecondary, CircleShape)
+                            .clip(CircleShape)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.MoreHoriz,
                             contentDescription = "More options",
@@ -157,15 +174,22 @@ fun CartView(navController: NavController,
                         containerColor = Color.White
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Clear cart",
-                                color = Color.Black) },
-                            onClick = { viewModel.clearCart()
+                            text = {
+                                Text(
+                                    "Clear cart",
+                                    color = Color.Black
+                                )
+                            },
+                            onClick = {
+                                clearCart()
                                 expanded = false
                                 coroutineScope.launch {
-                                    snackState.showSnackbar("Your cart has been cleared",
+                                    snackState.showSnackbar(
+                                        "Your cart has been cleared",
                                         actionLabel = "Close",
                                         withDismissAction = true,
-                                        duration = SnackbarDuration.Short)
+                                        duration = SnackbarDuration.Short
+                                    )
                                 }
                             }
                         )
@@ -174,61 +198,93 @@ fun CartView(navController: NavController,
             }
             Spacer(Modifier.padding(4.dp))
             HorizontalDivider(color = Color.LightGray)
-            if (uiState.cartProducts.isEmpty()){
-                NotFound(title = "Your cart is empty", modifier = Modifier.fillMaxSize().weight(1f))
+            if (state.cartProducts.isEmpty()) {
+                NotFound(
+                    title = "Your cart is empty", modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                )
             } else {
-                LazyColumn(Modifier.padding(horizontal = 8.dp).weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(uiState.cartProducts.size){i ->
-                        val cartProduct = uiState.cartProducts[i]
-                        CartItem(onQuantitySum = {
-                            viewModel.modifyQuantity(cartProduct.product_id, true)
+                LazyColumn(
+                    Modifier
+                        .padding(horizontal = 8.dp)
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(state.cartProducts.size) { i ->
+                        val cartProduct = state.cartProducts[i]
+                        CartItem(
+                            onQuantitySum = {
+                            modifyQuantity(cartProduct.product_id, true)
                         }, onQuantitySubtract = {
-                            viewModel.modifyQuantity(cartProduct.product_id, false)
+                            modifyQuantity(cartProduct.product_id, false)
                         }, cartProduct = cartProduct,
-                            onDeleteProduct = {viewModel.removeProductFromCart(cartProduct.product_id)})
-                        if (i != uiState.cartProducts.lastIndex){
-                            HorizontalDivider(modifier = Modifier
-                                .padding(vertical = 8.dp),
-                                color = Color.LightGray)
+                            onDeleteProduct = { removeProductFromCart(cartProduct.product_id) })
+                        if (i != state.cartProducts.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .padding(vertical = 8.dp),
+                                color = Color.LightGray
+                            )
                         }
                     }
                 }
             }
             Column(Modifier.padding(all = 8.dp)) {
-                Row(Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Absolute.SpaceBetween) {
-                    Text("Subtotal",fontFamily = myFont,
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Absolute.SpaceBetween
+                ) {
+                    Text(
+                        "Subtotal", fontFamily = myFont,
                         fontSize = 18.sp,
-                        color = Color.Black)
-                    Text(sumProductsPrices("subtotal"),fontFamily = myFont,
+                        color = Color.Black
+                    )
+                    Text(
+                        sumProductsPrices("subtotal"), fontFamily = myFont,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
-                        color = Color.Black)
+                        color = Color.Black
+                    )
                 }
-                Row(Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Absolute.SpaceBetween) {
-                    Text("Discount",fontFamily = myFont,
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Absolute.SpaceBetween
+                ) {
+                    Text(
+                        "Discount", fontFamily = myFont,
                         fontSize = 18.sp,
-                        color = Color.Black)
-                    Text(sumProductsPrices("discount"),fontFamily = myFont,
+                        color = Color.Black
+                    )
+                    Text(
+                        sumProductsPrices("discount"), fontFamily = myFont,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
-                        color = Color.Black)
+                        color = Color.Black
+                    )
                 }
-                Row(Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Absolute.SpaceBetween) {
-                    Text("Total", fontFamily = myFont,
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Absolute.SpaceBetween
+                ) {
+                    Text(
+                        "Total", fontFamily = myFont,
                         fontSize = 18.sp,
-                        color = Color.Black)
-                    Text(sumProductsPrices("total"),fontFamily = myFont,
+                        color = Color.Black
+                    )
+                    Text(
+                        sumProductsPrices("total"), fontFamily = myFont,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
-                        color = Color.Black)
+                        color = Color.Black
+                    )
                 }
             }
             HorizontalDivider(color = Color.LightGray)
-            Button(modifier = Modifier.fillMaxWidth().padding(all = 8.dp),
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(all = 8.dp),
                 colors = ButtonColors(
                     containerColor = GreenMain,
                     contentColor = BackgroundPrimary,
@@ -239,19 +295,21 @@ fun CartView(navController: NavController,
 
                 }) {
                 Box(Modifier.padding(vertical = 4.dp)) {
-                    Text("Checkout for $${sumProductsPrices("total")}", fontSize = 24.sp,
+                    Text(
+                        "Checkout for $${sumProductsPrices("total")}", fontSize = 24.sp,
                         fontFamily = myFont,
-                        fontWeight = FontWeight.SemiBold)
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
         SnackbarHost(
-            modifier=Modifier.align(Alignment.BottomStart),
+            modifier = Modifier.align(Alignment.BottomStart),
             hostState = snackState
         ) { snackbarData: SnackbarData ->
             CustomSnackBar(
                 snackbarData.visuals.message,
-            ){
+            ) {
                 snackbarData.dismiss()
             }
         }
@@ -259,52 +317,101 @@ fun CartView(navController: NavController,
 }
 
 @Composable
-fun CartItem(cartProduct: CartProducts,
-             onQuantitySum:() -> Unit,
-             onQuantitySubtract:() -> Unit,
-             onDeleteProduct:()-> Unit){
+fun CartView(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: CartViewModel = hiltViewModel()
+) {
 
-    Box(Modifier.fillMaxWidth().background(BackgroundPrimary)) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    CartViewContent(
+        state = uiState,
+        modifier = modifier,
+        removeProductFromCart = { productId ->
+            viewModel.removeProductFromCart(productId)
+        },
+        modifyQuantity = { productId, isSum ->
+            viewModel.modifyQuantity(productId, isSum)
+        },
+        clearCart = {
+            viewModel.clearCart()
+        })
+}
+
+@Composable
+fun CartItem(
+    cartProduct: CartProducts,
+    onQuantitySum: () -> Unit,
+    onQuantitySubtract: () -> Unit,
+    onDeleteProduct: () -> Unit
+) {
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(BackgroundPrimary)
+    ) {
         Row() {
-            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(BackgroundSecondary)) {
-                AsyncImage(model = cartProduct.thumbnail,
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BackgroundSecondary)
+            ) {
+                AsyncImage(
+                    model = cartProduct.thumbnail,
                     contentDescription = "product thumbnail",
                     error = painterResource(R.drawable.ic_broken_image),
                     placeholder = painterResource(R.drawable.ic_downloading),
                     fallback = painterResource(R.drawable.ic_broken_image),
-                    modifier = Modifier.size(150.dp))
+                    modifier = Modifier.size(150.dp)
+                )
             }
-            Column(Modifier.height(150.dp).padding(all = 8.dp),
-                verticalArrangement = Arrangement.SpaceBetween) {
+            Column(
+                Modifier
+                    .height(150.dp)
+                    .padding(all = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
                 Column() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(cartProduct.title,
+                        Text(
+                            cartProduct.title,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             fontFamily = myFont,
                             color = Color.Black,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f))
+                            modifier = Modifier.weight(1f)
+                        )
                         IconButton(onClick = {
                             onDeleteProduct()
                         }) {
-                            Icon(Icons.Default.Close,
+                            Icon(
+                                Icons.Default.Close,
                                 "Delete product",
-                                tint = Color.Gray)
+                                tint = Color.Gray
+                            )
                         }
                     }
-                    Text(cartProduct.sku,
+                    Text(
+                        cartProduct.sku,
                         fontFamily = myFont,
-                        color = Color.DarkGray)
+                        color = Color.DarkGray
+                    )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text("$${cartProduct.price * cartProduct.quantity}",
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "$${cartProduct.price * cartProduct.quantity}",
                         fontFamily = myFont,
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp)
+                        fontSize = 18.sp
+                    )
                     QuantitySelector(
                         quantity = cartProduct.quantity,
                         onQuantitySum = {
@@ -365,8 +472,8 @@ fun QuantityButton(
 @Composable
 fun QuantitySelector(
     quantity: Int,
-    onQuantitySum:() -> Unit,
-    onQuantitySubtract:() -> Unit
+    onQuantitySum: () -> Unit,
+    onQuantitySubtract: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

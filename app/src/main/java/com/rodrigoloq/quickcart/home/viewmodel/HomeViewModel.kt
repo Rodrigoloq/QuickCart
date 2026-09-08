@@ -9,14 +9,18 @@ import androidx.lifecycle.viewModelScope
 import com.rodrigoloq.quickcart.home.model.HomeRepository
 import com.rodrigoloq.quickcart.retrofit.entities.product.ProductResponse
 import com.rodrigoloq.quickcart.room.entities.CartProducts
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class HomeViewModel : ViewModel() {
-    private val repository = HomeRepository()
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: HomeRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUIState())
     val uiState: StateFlow<HomeUIState> = _uiState.asStateFlow()
 

@@ -10,20 +10,13 @@ import com.rodrigoloq.quickcart.room.entities.CartProducts
 import com.rodrigoloq.quickcart.room.entities.Favorites
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class ProductRepository {
-
-    private val productService: ProductService by lazy {
-        QuickCartApp.rdb.create(ProductService::class.java) }
-
-    private val favoritesDao: FavoritesDao by lazy {
-        QuickCartApp.ldb.FavoritesDao()
-    }
-
-    private val cartProductsDao: CartProductsDao by lazy {
-        QuickCartApp.ldb.cartProductsDao()
-    }
-
+class ProductRepository @Inject constructor(
+    private val productService: ProductService,
+    private val favoritesDao: FavoritesDao,
+    private val cartProductsDao: CartProductsDao
+) {
     suspend fun getProductDetail(productId: String,
                                  onResult:(Product?) -> Unit) =
         withContext(Dispatchers.IO){

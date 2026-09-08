@@ -4,15 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rodrigoloq.quickcart.favorites.model.FavoritesRepository
 import com.rodrigoloq.quickcart.room.entities.CartProducts
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class FavoritesViewModel : ViewModel() {
-    private val repository = FavoritesRepository()
-
+@HiltViewModel
+class FavoritesViewModel @Inject constructor(
+    private val repository: FavoritesRepository
+): ViewModel() {
     private val _uiState = MutableStateFlow(FavoritesUIState())
 
     val uiState: StateFlow<FavoritesUIState> = _uiState.asStateFlow()

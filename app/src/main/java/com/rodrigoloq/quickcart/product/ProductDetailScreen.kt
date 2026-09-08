@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -71,6 +72,7 @@ import coil3.compose.AsyncImage
 import com.rodrigoloq.quickcart.R
 import com.rodrigoloq.quickcart.common.CustomSnackBar
 import com.rodrigoloq.quickcart.home.HomeView
+import com.rodrigoloq.quickcart.product.viewmodel.ProductUIState
 import com.rodrigoloq.quickcart.product.viewmodel.ProductViewModel
 import com.rodrigoloq.quickcart.retrofit.entities.product.Product
 import com.rodrigoloq.quickcart.room.entities.CartProducts
@@ -82,259 +84,370 @@ import com.rodrigoloq.quickcart.ui.theme.QuickCartTheme
 import com.rodrigoloq.quickcart.ui.theme.myFont
 import kotlinx.coroutines.launch
 
-@Preview(name = "Dark Mode",
+@Preview(
+    name = "Dark Mode",
     uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true)
+    showBackground = true
+)
 @Composable
-fun ProductDetailPreview(){
+fun ProductDetailPreview() {
     QuickCartTheme() {
         Surface() {
-            ProductDetailView(rememberNavController(),"1")
+            ProductDetailViewContent(
+                state = ProductUIState(),
+                modifier = Modifier,
+                navController = rememberNavController(),
+                productId = "1",
+                getProductDetail = {},
+                isProductFavorite = {},
+                addProductToFavorites = {},
+                removeFavorite = {},
+                addProductToCart = {}
+            )
         }
     }
 }
 
 @Composable
-fun ProductDetailView(navController: NavController,
-                      productId: String?,
-                      modifier: Modifier = Modifier,
-                      viewModel: ProductViewModel = viewModel()){
+fun ProductDetailViewContent(
+    state: ProductUIState,
+    modifier: Modifier,
+    navController: NavController,
+    productId: String?,
+    getProductDetail: (String) -> Unit,
+    isProductFavorite: (String) -> Unit,
+    addProductToFavorites: (Favorites) -> Unit,
+    removeFavorite: (Int) -> Unit,
+    addProductToCart: (CartProducts) -> Unit
+) {
     val snackState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.getProductDetail(productId!!)
-        viewModel.isProductFavorite(productId)
+        getProductDetail(productId!!)
+        isProductFavorite(productId)
     }
 
-    fun getFinalPrice(price: Double, desc: Double): String{
+    fun getFinalPrice(price: Double, desc: Double): String {
         val result = price * (1.0 - (desc / 100.0))
         return String.format("%.2f", result)
     }
 
-    Column(modifier.fillMaxSize().background(BackgroundSecondary)) {
-        Box(modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center) {
+    Column(modifier
+        .fillMaxSize()
+        .background(BackgroundSecondary)) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
             ImageCarousel(
-                images = uiState.product.images
+                images = state.product.images
             )
-            Row(Modifier.fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .padding(8.dp),
-                horizontalArrangement = Arrangement.Absolute.SpaceBetween) {
-                IconButton(onClick = {
-                    navController.popBackStack()
-                }, Modifier.clip(CircleShape)
-                    .background(BackgroundPrimary)
-                    .padding(4.dp)) {
-                    Icon(imageVector = Icons.Default.ArrowBackIosNew,
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.Absolute.SpaceBetween
+            ) {
+                IconButton(
+                    onClick = {
+                        navController.popBackStack()
+                    }, Modifier
+                        .clip(CircleShape)
+                        .background(BackgroundPrimary)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBackIosNew,
                         "Back",
-                        tint = Color.Black)
+                        tint = Color.Black
+                    )
                 }
-                IconButton(onClick = {
-                    if (uiState.isFavorite){
-                        viewModel.removeFavorite(uiState.product.id)
-                    } else {
-                        viewModel.addProductToFavorites(Favorites(
-                            product_id = uiState.product.id,
-                            title = uiState.product.title,
-                            price = uiState.product.price,
-                            discount_percentage = uiState.product.discountPercentage,
-                            price_with_discount = getFinalPrice(uiState.product.price,
-                                uiState.product.discountPercentage).toDouble(),
-                            thumbnail = uiState.product.thumbnail,
-                            stock = uiState.product.stock,
-                            rating = uiState.product.rating,
-                            reviewsNumber = uiState.product.reviews.size,
-                            sku = uiState.product.sku
-                        ))
-                    }
-                }, Modifier.clip(CircleShape)
-                    .background(BackgroundPrimary)
-                    .padding(4.dp)) {
-                    Icon(imageVector = if (uiState.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                IconButton(
+                    onClick = {
+                        if (state.isFavorite) {
+                            removeFavorite(state.product.id)
+                        } else {
+                            addProductToFavorites(
+                                Favorites(
+                                    product_id = state.product.id,
+                                    title = state.product.title,
+                                    price = state.product.price,
+                                    discount_percentage = state.product.discountPercentage,
+                                    price_with_discount = getFinalPrice(
+                                        state.product.price,
+                                        state.product.discountPercentage
+                                    ).toDouble(),
+                                    thumbnail = state.product.thumbnail,
+                                    stock = state.product.stock,
+                                    rating = state.product.rating,
+                                    reviewsNumber = state.product.reviews.size,
+                                    sku = state.product.sku
+                                )
+                            )
+                        }
+                    }, Modifier
+                        .clip(CircleShape)
+                        .background(BackgroundPrimary)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (state.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                         "Back",
-                        tint = if (uiState.isFavorite) Color.Red else Color.Black)
+                        tint = if (state.isFavorite) Color.Red else Color.Black
+                    )
                 }
             }
         }
         Column() {
-            Box(Modifier.weight(1f)
-                .fillMaxSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(BackgroundPrimary)
-                .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(BackgroundPrimary)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     item {
-                        FlowRow(Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically) {
-                            Text(uiState.product.title,
+                        FlowRow(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                state.product.title,
                                 color = Color.Black,
                                 fontSize = 28.sp,
                                 fontFamily = myFont,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
-                            Box(Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(color = Color.Red)
-                                .padding(8.dp)) {
-                                Text("${uiState.product.discountPercentage}% OFF",
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(color = Color.Red)
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    "${state.product.discountPercentage}% OFF",
                                     color = BackgroundPrimary,
                                     fontFamily = myFont,
-                                    fontWeight = FontWeight.SemiBold)
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     }
                     item {
                         Row() {
-                            Box(Modifier.border(1.dp,
-                                Color.DarkGray,
-                                RoundedCornerShape(12.dp))
-                                .padding(8.dp)) {
+                            Box(
+                                Modifier
+                                    .border(
+                                        1.dp,
+                                        Color.DarkGray,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(8.dp)
+                            ) {
                                 Row() {
-                                    Icon(Icons.Default.Star,
+                                    Icon(
+                                        Icons.Default.Star,
                                         "rating star",
                                         tint = GreenMain
                                     )
-                                    Text(uiState.product.rating.toString(), color = Color.Black,
+                                    Text(
+                                        state.product.rating.toString(), color = Color.Black,
                                         fontFamily = myFont,
-                                        fontWeight = FontWeight.Bold)
-                                    Text("|", color = Color.Black,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "|", color = Color.Black,
                                         modifier = Modifier.padding(horizontal = 4.dp),
-                                        fontFamily = myFont)
-                                    Text("${uiState.product.reviews.size} reviews", color = Color.DarkGray,
+                                        fontFamily = myFont
+                                    )
+                                    Text(
+                                        "${state.product.reviews.size} reviews",
+                                        color = Color.DarkGray,
                                         fontSize = 14.sp,
                                         fontFamily = myFont,
-                                        fontWeight = FontWeight.SemiBold)
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                             Spacer(Modifier.padding(horizontal = 4.dp))
-                            Box(Modifier.border(1.dp,
-                                Color.DarkGray,
-                                RoundedCornerShape(12.dp))
-                                .padding(8.dp)) {
+                            Box(
+                                Modifier
+                                    .border(
+                                        1.dp,
+                                        Color.DarkGray,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(8.dp)
+                            ) {
                                 Row() {
-                                    Text("In Stock", color = Color.Black,
+                                    Text(
+                                        "In Stock", color = Color.Black,
                                         fontFamily = myFont,
-                                        fontWeight = FontWeight.Bold)
-                                    Text("|", color = Color.Black,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "|", color = Color.Black,
                                         modifier = Modifier.padding(horizontal = 4.dp),
-                                        fontFamily = myFont)
-                                    Text("${uiState.product.stock} available", color = Color.DarkGray,
+                                        fontFamily = myFont
+                                    )
+                                    Text(
+                                        "${state.product.stock} available", color = Color.DarkGray,
                                         fontSize = 14.sp,
                                         fontFamily = myFont,
-                                        fontWeight = FontWeight.SemiBold)
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }
                         Spacer(Modifier.padding(vertical = 8.dp))
                     }
                     item {
-                        Text(uiState.product.description,
-                            color = Color.Black, fontFamily = myFont)
+                        Text(
+                            state.product.description,
+                            color = Color.Black, fontFamily = myFont
+                        )
                         Spacer(Modifier.padding(vertical = 4.dp))
                     }
                     item {
                         FlowRow() {
-                            Image(painterResource(R.drawable.ic_package),
+                            Image(
+                                painterResource(R.drawable.ic_package),
                                 contentDescription = "return icon",
-                                modifier = Modifier.size(24.dp))
-                            Text("Shipping Information: ",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                "Shipping Information: ",
                                 color = Color.Black,
                                 fontFamily = myFont,
-                                fontWeight = FontWeight.Bold)
-                            Text("FREE SHIPPING",
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "FREE SHIPPING",
                                 fontFamily = myFont,
                                 color = GreenMain,
                                 textDecoration = TextDecoration.Underline,
-                                fontWeight = FontWeight.SemiBold)
-                            Text(uiState.product.shippingInformation,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                state.product.shippingInformation,
                                 fontFamily = myFont,
-                                color = Color.Black)
+                                color = Color.Black
+                            )
                         }
                         Spacer(Modifier.padding(vertical = 4.dp))
                         Column() {
                             Row() {
-                                Image(painterResource(R.drawable.ic_return),
+                                Image(
+                                    painterResource(R.drawable.ic_return),
                                     contentDescription = "return icon",
-                                    modifier = Modifier.size(24.dp))
-                                Text("Return Policy:",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    "Return Policy:",
                                     color = Color.Black,
                                     fontFamily = myFont,
-                                    fontWeight = FontWeight.Bold)
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            Text(uiState.product.returnPolicy,
+                            Text(
+                                state.product.returnPolicy,
                                 fontFamily = myFont,
-                                color = Color.Black)
+                                color = Color.Black
+                            )
                         }
                         Spacer(Modifier.padding(vertical = 4.dp))
                         Column() {
                             Row() {
-                                Image(painterResource(R.drawable.ic_shield),
+                                Image(
+                                    painterResource(R.drawable.ic_shield),
                                     contentDescription = "return icon",
-                                    modifier = Modifier.size(24.dp))
-                                Text("Warranty Information:",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    "Warranty Information:",
                                     color = Color.Black,
                                     fontFamily = myFont,
-                                    fontWeight = FontWeight.Bold)
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            Text(uiState.product.warrantyInformation,
+                            Text(
+                                state.product.warrantyInformation,
                                 fontFamily = myFont,
-                                color = Color.Black)
+                                color = Color.Black
+                            )
                         }
                     }
                     item {
                         Spacer(Modifier.padding(vertical = 4.dp))
-                        Text("Reviews (${uiState.product.reviews.size})",
+                        Text(
+                            "Reviews (${state.product.reviews.size})",
                             color = Color.Black,
                             fontFamily = myFont,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp)
+                            fontSize = 18.sp
+                        )
                     }
                     item {
-                        ReviewsComponentView(reviews = uiState.product.reviews)
+                        ReviewsComponentView(reviews = state.product.reviews)
                     }
                 }
                 SnackbarHost(
-                    modifier=Modifier.align(Alignment.BottomStart),
+                    modifier = Modifier.align(Alignment.BottomStart),
                     hostState = snackState
                 ) { snackbarData: SnackbarData ->
                     CustomSnackBar(
                         snackbarData.visuals.message,
-                    ){
+                    ) {
                         snackbarData.dismiss()
                     }
                 }
             }
-            Box(Modifier
-                .background(BackgroundPrimary)) {
+            Box(
+                Modifier
+                    .background(BackgroundPrimary)
+            ) {
                 HorizontalDivider(color = Color.LightGray)
-                Row(Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(all = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .padding(all = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column() {
-                        Text("$${uiState.product.price}",
+                        Text(
+                            "$${state.product.price}",
                             fontSize = 22.sp,
                             color = Color.Gray,
                             textDecoration = TextDecoration.LineThrough,
                             fontFamily = myFont,
-                            fontWeight =FontWeight.SemiBold)
-                        Text("$${getFinalPrice(uiState.product.price,
-                            uiState.product.discountPercentage)}",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "$${
+                                getFinalPrice(
+                                    state.product.price,
+                                    state.product.discountPercentage
+                                )
+                            }",
                             fontSize = 30.sp,
                             color = Color.Black,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = myFont)
+                            fontFamily = myFont
+                        )
                     }
                     Spacer(Modifier.padding(horizontal = 4.dp))
-                    Button(modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1f),
+                    Button(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(1f),
                         colors = ButtonColors(
                             containerColor = GreenMain,
                             contentColor = BackgroundPrimary,
@@ -342,35 +455,75 @@ fun ProductDetailView(navController: NavController,
                             disabledContentColor = BackgroundPrimary,
                         ), shape = RoundedCornerShape(12.dp),
                         onClick = {
-                            viewModel.addProductToCart(CartProducts(
-                                product_id = uiState.product.id,
-                                title = uiState.product.title,
-                                price = uiState.product.price,
-                                discount_percentage = uiState.product.discountPercentage,
-                                price_with_discount = getFinalPrice(uiState.product.price,
-                                    uiState.product.discountPercentage).toDouble(),
-                                thumbnail = uiState.product.thumbnail,
-                                stock = uiState.product.stock,
-                                quantity = 1,
-                                sku = uiState.product.sku
-                            ))
+                            addProductToCart(
+                                CartProducts(
+                                    product_id = state.product.id,
+                                    title = state.product.title,
+                                    price = state.product.price,
+                                    discount_percentage = state.product.discountPercentage,
+                                    price_with_discount = getFinalPrice(
+                                        state.product.price,
+                                        state.product.discountPercentage
+                                    ).toDouble(),
+                                    thumbnail = state.product.thumbnail,
+                                    stock = state.product.stock,
+                                    quantity = 1,
+                                    sku = state.product.sku
+                                )
+                            )
                             coroutineScope.launch {
-                                snackState.showSnackbar("Product added to cart",
+                                snackState.showSnackbar(
+                                    "Product added to cart",
                                     actionLabel = "Close",
                                     withDismissAction = true,
-                                    duration = SnackbarDuration.Short)
+                                    duration = SnackbarDuration.Short
+                                )
                             }
                         }) {
                         Box(Modifier.padding(vertical = 8.dp)) {
-                            Text("Add to cart", fontSize = 24.sp,
+                            Text(
+                                "Add to cart", fontSize = 24.sp,
                                 fontFamily = myFont,
-                                fontWeight = FontWeight.SemiBold)
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun ProductDetailView(
+    navController: NavController,
+    productId: String?,
+    modifier: Modifier = Modifier,
+    viewModel: ProductViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    ProductDetailViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController,
+        productId = productId,
+        getProductDetail = { productId ->
+            viewModel.getProductDetail(productId)
+        },
+        isProductFavorite = { productId ->
+            viewModel.isProductFavorite(productId)
+        },
+        addProductToFavorites = { favorite ->
+            viewModel.addProductToFavorites(favorite)
+        },
+        removeFavorite = { productId ->
+            viewModel.removeFavorite(productId)
+        },
+        addProductToCart = { product ->
+            viewModel.addProductToCart(product)
+        }
+    )
 }
 
 @Composable
@@ -390,18 +543,22 @@ fun ImageCarousel(
             modifier = Modifier
                 .fillMaxWidth()
         ) { page ->
-            AsyncImage(model = images[page],
+            AsyncImage(
+                model = images[page],
                 contentDescription = "product thumbnail",
                 error = painterResource(R.drawable.ic_broken_image),
                 placeholder = painterResource(R.drawable.ic_downloading),
                 fallback = painterResource(R.drawable.ic_broken_image),
                 modifier = Modifier.fillMaxWidth(),
-                contentScale = ContentScale.Fit)
+                contentScale = ContentScale.Fit
+            )
         }
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp)
         ) {
             repeat(images.size) { index ->
 

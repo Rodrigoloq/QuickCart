@@ -1,5 +1,6 @@
 package com.rodrigoloq.quickcart.profile
 
+import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -42,6 +43,7 @@ import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,29 +66,42 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.rodrigoloq.quickcart.R
 import com.rodrigoloq.quickcart.common.CustomSnackBar
+import com.rodrigoloq.quickcart.profile.viewmodel.ProfileUIState
 import com.rodrigoloq.quickcart.profile.viewmodel.ProfileViewModel
 import com.rodrigoloq.quickcart.ui.theme.BackgroundPrimary
 import com.rodrigoloq.quickcart.ui.theme.GreenMain
+import com.rodrigoloq.quickcart.ui.theme.QuickCartTheme
 import com.rodrigoloq.quickcart.ui.theme.myFont
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-@Preview
+@Preview(name = "Dark Mode",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true)
 @Composable
 fun ProfilePreview(){
-    ProfileView(rememberNavController())
+    QuickCartTheme() {
+        Surface() {
+            ProfileViewContent(
+                state = ProfileUIState(),
+                modifier = Modifier,
+                navController = rememberNavController()
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileView(navController: NavController,
-                modifier: Modifier = Modifier,
-                viewModel: ProfileViewModel = viewModel()){
+fun ProfileViewContent(state: ProfileUIState,
+                       modifier: Modifier,
+                       navController: NavController){
     var optionSelected by remember { mutableStateOf("") }
     var informationOptionSelected by remember { mutableStateOf("") }
     var showBottomSheet by remember { mutableStateOf(false)}
@@ -99,7 +114,7 @@ fun ProfileView(navController: NavController,
     val snackState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    val uiState by viewModel.uiState.collectAsState()
+
     Box(modifier.fillMaxSize().background(BackgroundPrimary)) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier
@@ -114,10 +129,10 @@ fun ProfileView(navController: NavController,
                         contentDescription = "user image",
                         modifier = Modifier.size(128.dp).background(BackgroundPrimary))
                 }
-                Text(uiState.user.firstName + " " + uiState.user.lastName,
+                Text(state.user.firstName + " " + state.user.lastName,
                     fontFamily = myFont,
                     fontSize = 30.sp)
-                Text(uiState.user.email,
+                Text(state.user.email,
                     fontFamily = myFont,
                     fontSize = 20.sp)
             }
@@ -177,7 +192,7 @@ fun ProfileView(navController: NavController,
                         }
                         HorizontalDivider()
                         OptionsComponent(
-                            listOf(OptionItem("${uiState.user.bank.cardType}-${uiState.user.bank.cardNumber.takeLast(4)}",
+                            listOf(OptionItem("${state.user.bank.cardType}-${state.user.bank.cardNumber.takeLast(4)}",
                                 Icons.Outlined.CreditCard),
                                 OptionItem("Add credit card",
                                     Icons.Default.AddCard))) { onOptionSelected, onShowBottomSheet ->
@@ -204,7 +219,7 @@ fun ProfileView(navController: NavController,
                         }
                         HorizontalDivider()
                         OptionsComponent(
-                            listOf(OptionItem("${uiState.user.address.address}, ${uiState.user.address.city}, ${uiState.user.address.stateCode}",
+                            listOf(OptionItem("${state.user.address.address}, ${state.user.address.city}, ${state.user.address.stateCode}",
                                 Icons.Outlined.CreditCard),
                                 OptionItem("Add address", Icons.Default.AddCard))) { onOptionSelected, onShowBottomSheet ->
                             if(onOptionSelected == "Add address") {isSaveAddressForm = true}
@@ -233,20 +248,23 @@ fun ProfileView(navController: NavController,
                 when(typeForm){
                     "Profile information" -> {
                         EditInformationFormView(optionName = informationOptionSelected,
-                            userInformation = uiState.user){
+                            userInformation = state.user,
+                            onSave = {
+                                coroutineScope.launch {
+                                    snackState.showSnackbar("Changes successfully saved",
+                                        actionLabel = "Close",
+                                        withDismissAction = true,
+                                        duration = SnackbarDuration.Short)
+                                }
+                                showBottomSheet = false
+                            }){
                             showBottomSheet = it
-                            coroutineScope.launch {
-                                snackState.showSnackbar("Changes successfully saved",
-                                    actionLabel = "Close",
-                                    withDismissAction = true,
-                                    duration = SnackbarDuration.Short)
-                            }
                         }
                     }
                     "Card information" -> {
                         CardInformationFormView(saveFormType = isSaveCardForm,
-                            bank = uiState.user.bank,
-                            name = "${uiState.user.firstName} ${uiState.user.lastName}") {
+                            bank = state.user.bank,
+                            name = "${state.user.firstName} ${state.user.lastName}") {
                             if (isSaveCardForm){
                                 coroutineScope.launch {
                                     snackState.showSnackbar("Changes successfully saved",
@@ -261,7 +279,7 @@ fun ProfileView(navController: NavController,
                     }
                     "Address information" -> {
                         AddressInformationFormView(saveFormType = isSaveAddressForm,
-                            address = uiState.user.address) {
+                            address = state.user.address) {
                             if (isSaveAddressForm){
                                 coroutineScope.launch {
                                     snackState.showSnackbar("Changes successfully saved",
@@ -288,6 +306,20 @@ fun ProfileView(navController: NavController,
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileView(navController: NavController,
+                modifier: Modifier = Modifier,
+                viewModel: ProfileViewModel = hiltViewModel()){
+    val uiState by viewModel.uiState.collectAsState()
+
+    ProfileViewContent(
+        state = uiState,
+        modifier = modifier,
+        navController = navController
+    )
 }
 
 data class OptionItem(val name: String,

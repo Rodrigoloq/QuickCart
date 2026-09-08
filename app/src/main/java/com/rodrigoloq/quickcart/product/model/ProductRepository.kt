@@ -1,0 +1,94 @@
+package com.rodrigoloq.quickcart.product.model
+
+import android.util.Log
+import com.rodrigoloq.quickcart.QuickCartApp
+import com.rodrigoloq.quickcart.retrofit.ProductService
+import com.rodrigoloq.quickcart.retrofit.entities.product.Product
+import com.rodrigoloq.quickcart.room.CartProductsDao
+import com.rodrigoloq.quickcart.room.FavoritesDao
+import com.rodrigoloq.quickcart.room.entities.CartProducts
+import com.rodrigoloq.quickcart.room.entities.Favorites
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class ProductRepository {
+
+    private val productService: ProductService by lazy {
+        QuickCartApp.rdb.create(ProductService::class.java) }
+
+    private val favoritesDao: FavoritesDao by lazy {
+        QuickCartApp.ldb.FavoritesDao()
+    }
+
+    private val cartProductsDao: CartProductsDao by lazy {
+        QuickCartApp.ldb.cartProductsDao()
+    }
+
+    suspend fun getProductDetail(productId: String,
+                                 onResult:(Product?) -> Unit) =
+        withContext(Dispatchers.IO){
+        try {
+            val result = productService.getProductsById(productId)
+            onResult(result)
+        } catch (e: Exception) {
+            onResult(null)
+            Log.e("RLTAG", "getProductDetail: ${e.message}", )
+        }
+    }
+
+    suspend fun addProductToFavorites(favorite: Favorites,
+                                      onResult:(Boolean) -> Unit) =
+        withContext(Dispatchers.IO){
+            try {
+                if(favoritesDao.isProductFavorite(favorite.product_id)){
+                    onResult(false)
+                } else {
+                    onResult(favoritesDao.addFavorite(favorite) > 0)
+                }
+            } catch (e: Exception) {
+                onResult(false)
+                Log.e("RLTAG", "addProductToFavorites: ${e.message}")
+            }
+        }
+
+    suspend fun removeFavorite(productId: Int,
+                               onResult:(Boolean) -> Unit)=
+        withContext(Dispatchers.IO){
+            try {
+                onResult(favoritesDao.removeFavorite(productId) > 0)
+            } catch (e: Exception) {
+                onResult(false)
+                Log.e("RLTAG", "removeFavorite: ${e.message}")
+            }
+        }
+
+    suspend fun isProductFavorite(productId: Int,
+                                  onResult: (Boolean) -> Unit) =
+        withContext(Dispatchers.IO){
+            try {
+                onResult(favoritesDao.isProductFavorite(productId))
+            } catch (e: Exception) {
+                onResult(false)
+                Log.e("RLTAG", "isProductFavorite: ${e.message}")
+            }
+        }
+
+    suspend fun addProductToCart(product: CartProducts,
+                                 onResult:(Boolean) -> Unit) =
+        withContext(Dispatchers.IO){
+            try {
+                val exists = cartProductsDao.doesProductExists(product.product_id)
+                if (exists){
+                    val quantity = cartProductsDao.getProductQuantity(product.product_id)
+                    cartProductsDao.modifyProductQuantity(quantity + 1, product.product_id)
+                    onResult(true)
+                } else {
+                    cartProductsDao.addProductToCart(product)
+                    onResult(true)
+                }
+            } catch (e: Exception) {
+                onResult(false)
+                Log.e("RLTAG", "addProductToCart: ${e.message}")
+            }
+        }
+}

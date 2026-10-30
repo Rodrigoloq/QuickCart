@@ -1,0 +1,263 @@
+package com.rodrigoloq.quickcart.feature.categories
+
+import android.content.res.Configuration
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.SnackbarData
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.rodrigoloq.quickcart.ui.common.SearchComponentView
+import com.rodrigoloq.quickcart.feature.categories.viewmodel.CategoriesUIState
+import com.rodrigoloq.quickcart.feature.categories.viewmodel.CategoriesViewModel
+import com.rodrigoloq.quickcart.ui.common.CustomSnackBar
+import com.rodrigoloq.quickcart.ui.common.LoadingIndicator
+import com.rodrigoloq.quickcart.ui.common.NotFound
+import com.rodrigoloq.quickcart.ui.common.SearchTextField
+import com.rodrigoloq.quickcart.data.room.entities.CartProducts
+import com.rodrigoloq.quickcart.ui.theme.BackgroundItem
+import com.rodrigoloq.quickcart.ui.theme.BackgroundPrimary
+import com.rodrigoloq.quickcart.ui.theme.QuickCartTheme
+import com.rodrigoloq.quickcart.ui.theme.myFont
+import kotlinx.coroutines.launch
+
+@Preview(
+    name = "Dark Mode",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true
+)
+@Composable
+fun CategoriesPreview() {
+    QuickCartTheme() {
+        Surface() {
+            CategoriesViewContent(
+                state = CategoriesUIState(),
+                navController = rememberNavController(),
+                modifier = Modifier,
+                getProductsByCategory = {},
+                searchProducts = {}
+            ) { }
+        }
+    }
+}
+
+@Composable
+fun CategoriesViewContent(
+    state: CategoriesUIState,
+    navController: NavController,
+    modifier: Modifier,
+    getProductsByCategory: (String) -> Unit,
+    searchProducts: (String) -> Unit,
+    addProductToCart: (CartProducts) -> Unit
+) {
+
+    val categories = listOf(
+        "Beauty", "Fragrances", "Furniture", "Groceries", "Home Decoration",
+        "Kitchen Accessories", "Laptops", "Mens Shirts", "Mens Shoes", "Mens Watches",
+        "Mobile Accessories", "Motorcycle", "Skin Care", "Smartphones", "Sports Accessories",
+        "Sunglasses", "Tablets", "Tops", "Vehicle", "Womens Bags", "Womens Dresses",
+        "Womens Jewellery", "Womens Shoes", "Womens Watches"
+    )
+    var selectedCategory by remember { mutableStateOf(categories[0]) }
+    var searchTextValue by remember { mutableStateOf("") }
+    val snackState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun getFinalPrice(price: Double, desc: Double): String {
+        val result = price * (1.0 - (desc / 100.0))
+        return String.format("%.2f", result)
+    }
+
+    LaunchedEffect(Unit) {
+        getProductsByCategory(
+            selectedCategory
+                .lowercase().replace(" ", "-")
+        )
+    }
+
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(BackgroundPrimary),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column {
+            SearchTextField(
+                value = searchTextValue,
+                modifier = Modifier
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp),
+                onClearText = {
+                    searchTextValue = ""
+                }) {
+                searchTextValue = it
+                searchProducts(it)
+            }
+            if (searchTextValue.isEmpty()) {
+                Row(
+                    Modifier
+                        .padding(top = 8.dp)
+                ) {
+                    LazyColumn {
+                        items(categories.size) { i ->
+                            val category = categories[i]
+                            Box(
+                                Modifier
+                                    .background(color = if (selectedCategory == category) Color.White else BackgroundItem)
+                                    .padding(8.dp)
+                                    .clickable {
+                                        selectedCategory = category
+                                        getProductsByCategory(
+                                            category
+                                                .lowercase().replace(" ", "-")
+                                        )
+                                    }) {
+                                Text(
+                                    text = category,
+                                    color = Color.Black,
+                                    softWrap = true,
+                                    fontFamily = myFont,
+                                    fontWeight = if (selectedCategory == category) FontWeight.Bold else FontWeight.Light,
+                                    modifier = Modifier.width(110.dp)
+                                )
+                            }
+                        }
+                    }
+                    BoxWithConstraints {
+                        val itemWidth = (maxWidth / 2)
+                        if (state.inProgressProducts) {
+                            LoadingIndicator(title = "products")
+                        } else {
+                            if (state.products.isEmpty()) {
+                                NotFound(
+                                    title = "Not products found",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(state.products.size) { i ->
+                                        val product = state.products[i]
+                                        ProductItemView(
+                                            width = itemWidth,
+                                            product = product,
+                                            onClick = {
+                                                navController.navigate("product" + "/${product.id}")
+                                            }) {
+                                            addProductToCart(
+                                                CartProducts(
+                                                    product_id = product.id,
+                                                    title = product.title,
+                                                    price = product.price,
+                                                    discount_percentage = product.discountPercentage,
+                                                    price_with_discount = getFinalPrice(
+                                                        product.price,
+                                                        product.discountPercentage
+                                                    ).toDouble(),
+                                                    thumbnail = product.thumbnail,
+                                                    stock = product.stock,
+                                                    quantity = 1,
+                                                    sku = product.sku
+                                                )
+                                            )
+                                            coroutineScope.launch {
+                                                snackState.showSnackbar(
+                                                    "Product added to cart",
+                                                    actionLabel = "Close",
+                                                    withDismissAction = true,
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (state.searchProducts.isEmpty()) {
+                    NotFound(
+                        title = "Not matches found",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    SearchComponentView(
+                        products = state.searchProducts,
+                        navController = navController
+                    )
+                }
+            }
+        }
+        SnackbarHost(
+            modifier = Modifier.align(Alignment.BottomStart),
+            hostState = snackState
+        ) { snackbarData: SnackbarData ->
+            CustomSnackBar(
+                snackbarData.visuals.message,
+            ) {
+                snackbarData.dismiss()
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoriesView(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: CategoriesViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    CategoriesViewContent(
+        state = uiState,
+        navController = navController,
+        modifier = modifier,
+        getProductsByCategory = { categoryName ->
+            viewModel.getProductsByCategory(categoryName)
+        },
+        searchProducts = { searchValue ->
+            viewModel.searchProducts(searchValue)
+        },
+        addProductToCart = { product ->
+            viewModel.addProductToCart(product)
+        },
+    )
+}

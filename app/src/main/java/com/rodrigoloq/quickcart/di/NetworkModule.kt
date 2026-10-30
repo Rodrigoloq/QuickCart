@@ -1,7 +1,7 @@
 package com.rodrigoloq.quickcart.di
 
-import com.rodrigoloq.quickcart.retrofit.ProductService
-import com.rodrigoloq.quickcart.retrofit.UserService
+import com.rodrigoloq.quickcart.data.retrofit.ProductService
+import com.rodrigoloq.quickcart.data.retrofit.UserService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

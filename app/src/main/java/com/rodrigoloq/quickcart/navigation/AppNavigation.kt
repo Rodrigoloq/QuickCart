@@ -9,7 +9,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rodrigoloq.moviepedia.navigation.NavigationBarView
-import com.rodrigoloq.quickcart.product.ProductDetailView
+import com.rodrigoloq.quickcart.feature.product.ProductDetailView
 
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier){

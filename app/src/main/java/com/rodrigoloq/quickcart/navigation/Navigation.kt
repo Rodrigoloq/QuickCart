@@ -6,11 +6,11 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.rodrigoloq.quickcart.cart.CartView
-import com.rodrigoloq.quickcart.categories.CategoriesView
-import com.rodrigoloq.quickcart.favorites.FavoritesView
-import com.rodrigoloq.quickcart.home.HomeView
-import com.rodrigoloq.quickcart.profile.ProfileView
+import com.rodrigoloq.quickcart.feature.cart.CartView
+import com.rodrigoloq.quickcart.feature.categories.CategoriesView
+import com.rodrigoloq.quickcart.feature.favorites.FavoritesView
+import com.rodrigoloq.quickcart.feature.home.HomeView
+import com.rodrigoloq.quickcart.feature.profile.ProfileView
 
 
 @Composable

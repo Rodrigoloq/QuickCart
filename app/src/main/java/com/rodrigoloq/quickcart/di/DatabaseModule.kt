@@ -2,9 +2,9 @@ package com.rodrigoloq.quickcart.di
 
 import android.content.Context
 import androidx.room.Room
-import com.rodrigoloq.quickcart.room.AppDatabase
-import com.rodrigoloq.quickcart.room.CartProductsDao
-import com.rodrigoloq.quickcart.room.FavoritesDao
+import com.rodrigoloq.quickcart.data.room.AppDatabase
+import com.rodrigoloq.quickcart.data.room.dao.CartProductsDao
+import com.rodrigoloq.quickcart.data.room.dao.FavoritesDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
